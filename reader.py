@@ -1,13 +1,17 @@
+from datetime import datetime
 import os
+import string
+
 from bs4 import BeautifulSoup
 from nltk.tokenize import word_tokenize
 from nltk.stem import *
 
 
-# Extracts data from reuters corpus .sgm files and returns an index with {term: [doc_id]} pairs
+# Extracts article body and id from reuters corpus .sgm files and returns a dictionary with each term pointing to a
+# list of article ids in which the term appears.
 def extract_data():
-    F = []
-    index = dict()
+    now = datetime.now()
+    index = {}
 
     for file in sorted(os.listdir(os.getcwd() + '/reuters_files/')):
         if file.endswith(".sgm"):
@@ -23,22 +27,17 @@ def extract_data():
                     body = word_tokenize(str(tag('body')[0].contents[0]))
                     ids = str(tag['newid'])
                     for token in body:
-                        F.append((token, ids))
-            # break used for testing so it only iterates over first file
+                        if token in string.punctuation:  # Checks if token is part of Python's list of punctuations
+                            break
+                        else:
+                            if token in index:
+                                index[token].append(int(ids))
+                            else:
+                                index[token] = [int(ids)]
 
-    # Sorts and removes duplicates from list
-    F = sorted(set(F))
 
-    for term, doc_id in F:
-        if term in index:
-            index[term].append(int(doc_id))
-        else:
-            index[term] = [int(doc_id)]
-
-    # Orders list of document IDs in ascending order
-    for term in index:
-        index[term].sort()
-
+    #print(index)
+    print("SPIMI inspired procedure time: " + str(datetime.now() - now))
     return index
 
 
