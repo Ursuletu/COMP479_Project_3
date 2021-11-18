@@ -7,9 +7,32 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import *
 
 
+# Returns a dictionary mapping each Reuters article id(str) to its body(str list)
+def get_index():
+    index = {}
+
+    for file in sorted(os.listdir(os.getcwd() + '/reuters_files/')):
+        if file.endswith(".sgm"):
+            with open(os.getcwd() + '/reuters_files/' + file, 'rb') as f:
+                data = f.read()
+                f.close()
+
+            soup = BeautifulSoup(data, 'html.parser')
+            articles = soup.find_all('reuters')
+
+            for tag in articles:
+                if len(tag('body')) > 0:
+                    body = word_tokenize(str(tag('body')[0].contents[0]))
+                    ids = str(tag['newid'])
+                    index[ids] = body
+
+    # print(index)
+    return index
+
+
 # Extracts article body and id from reuters corpus .sgm files and returns a dictionary with each term pointing to a
 # list of article ids in which the term appears.
-def extract_data():
+def get_inverted_index():
     now = datetime.now()
     index = {}
 
@@ -28,17 +51,56 @@ def extract_data():
                     ids = str(tag['newid'])
                     for token in body:
                         if token in string.punctuation:  # Checks if token is part of Python's list of punctuations
-                            break
+                            continue
                         else:
                             if token in index:
                                 index[token].append(int(ids))
                             else:
                                 index[token] = [int(ids)]
 
+    # Removing duplicates from list
+    for key in index:
+        index[key] = sorted(set(index[key]))
 
-    #print(index)
-    print("SPIMI inspired procedure time: " + str(datetime.now() - now))
+    # print("SPIMI inspired procedure time: " + str(datetime.now() - now))
+    # print("Index length: " + str(len(index)))
     return index
+
+
+# Returns a dictionary mapping document ID to document length, avg and total
+def get_docs_length_and_average():
+    num_of_docs = 0
+    dictionary = {}
+
+    for file in sorted(os.listdir(os.getcwd() + '/reuters_files/')):
+        if file.endswith(".sgm"):
+            with open(os.getcwd() + '/reuters_files/' + file, 'rb') as f:
+                data = f.read()
+                f.close()
+
+            soup = BeautifulSoup(data, 'html.parser')
+            articles = soup.find_all('reuters')
+
+            for tag in articles:
+                if len(tag('body')) > 0:
+                    num_of_docs = num_of_docs + 1
+
+                    ids = str(tag['newid'])
+                    body = word_tokenize(str(tag('body')[0].contents[0]))
+                    document_length = len(body)
+                    dictionary[ids] = document_length
+
+    total_length = 0
+
+    for doc_id in dictionary:
+        total_length = total_length + dictionary[doc_id]
+
+    avg_length = total_length/len(dictionary)
+
+    dictionary['avg'] = avg_length
+    dictionary['total'] = num_of_docs
+
+    return dictionary
 
 
 # Takes a dictionary and searches for a single term query
@@ -57,7 +119,7 @@ def output_to_file(index):
             file.write(key + ': ')
             file.write(str(value))
             file.write('\n')
-    file.close()
+        file.close()
 
 
 # Takes index and returns an index without numbers (defined as strings that do not contain any alphabetic characters)
